@@ -4,6 +4,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { ConfigError, loadConfig } from "./config/load.js";
+
 export const EXIT_CODE_SUCCESS = 0;
 export const EXIT_CODE_RUNTIME_ERROR = 1;
 export const EXIT_CODE_USAGE_ERROR = 2;
@@ -212,14 +214,20 @@ async function readPackageVersion(): Promise<string> {
 }
 
 async function handleScan(command: ScanCommand): Promise<string> {
+  const loadedConfig = await loadConfig({
+    rootPath: command.path,
+    explicitConfigPath: command.config
+  });
+
   if (command.format === "json") {
     return `${JSON.stringify(
       {
         command: "scan",
         path: command.path,
-        config: command.config ?? null,
+        configPath: loadedConfig.configPath ?? null,
         format: command.format,
         failOn: command.failOn,
+        config: loadedConfig.config,
         placeholder: true
       },
       null,
@@ -227,10 +235,14 @@ async function handleScan(command: ScanCommand): Promise<string> {
     )}\n`;
   }
 
-  return `scan placeholder: path=${command.path}, format=${command.format}, fail-on=${command.failOn}\n`;
+  return `scan placeholder: path=${command.path}, format=${command.format}, fail-on=${command.failOn}, config=${loadedConfig.configPath ?? "defaults"}\n`;
 }
 
 async function handleGraph(command: GraphCommand): Promise<string> {
+  const loadedConfig = await loadConfig({
+    rootPath: command.path,
+    explicitConfigPath: command.config
+  });
   const outputPath = path.resolve(command.out);
   const outputDir = path.dirname(outputPath);
 
@@ -240,6 +252,7 @@ async function handleGraph(command: GraphCommand): Promise<string> {
     `${JSON.stringify(
       {
         root: command.path,
+        configPath: loadedConfig.configPath ?? null,
         nodes: [],
         edges: []
       },
@@ -286,9 +299,9 @@ export async function runCli(
     stdout.write(output);
     return EXIT_CODE_SUCCESS;
   } catch (error) {
-    if (error instanceof CliUsageError) {
+    if (error instanceof CliUsageError || error instanceof ConfigError) {
       stderr.write(`${error.message}\n`);
-      return error.exitCode;
+      return EXIT_CODE_USAGE_ERROR;
     }
 
     const message = error instanceof Error ? error.message : String(error);

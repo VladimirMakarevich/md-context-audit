@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -116,6 +116,25 @@ describe("CLI smoke", () => {
     expect(output).toBe("0.0.0\n");
   });
 
+  it("returns a usage error for an invalid config file", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "md-context-audit-cli-"));
+    tempDirs.push(tempDir);
+    const configPath = path.join(tempDir, "md-context-audit.config.json");
+    const stdout = createMemoryWriter();
+    const stderr = createMemoryWriter();
+
+    await writeFile(configPath, JSON.stringify({ links: { checkExternal: "false" } }), "utf8");
+
+    const exitCode = await runCli(["scan", tempDir], {
+      stdout: stdout.stream,
+      stderr: stderr.stream
+    });
+
+    expect(exitCode).toBe(EXIT_CODE_USAGE_ERROR);
+    expect(stdout.read()).toBe("");
+    expect(stderr.read()).toContain("Invalid config:");
+  });
+
   it("returns a usage error for an unknown command", async () => {
     const stdout = createMemoryWriter();
     const stderr = createMemoryWriter();
@@ -144,6 +163,8 @@ describe("CLI smoke", () => {
     const graphJson = await readFile(outFile, "utf8");
 
     expect(output).toContain("graph placeholder written");
-    expect(graphJson).toBe('{\n  "root": "/repo",\n  "nodes": [],\n  "edges": []\n}\n');
+    expect(graphJson).toBe(
+      '{\n  "root": "/repo",\n  "configPath": null,\n  "nodes": [],\n  "edges": []\n}\n'
+    );
   });
 });
