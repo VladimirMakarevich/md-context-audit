@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 
 import { ConfigError, loadConfig } from "./config/load.js";
 import { discoverMarkdownFiles, DiscoveryError } from "./discovery/discover.js";
+import { parseMarkdownFiles } from "./markdown/parse.js";
+import { checkLocalLinks } from "./rules/local-links.js";
+import { checkFileSizes } from "./rules/size.js";
 
 export const EXIT_CODE_SUCCESS = 0;
 export const EXIT_CODE_RUNTIME_ERROR = 1;
@@ -223,6 +226,25 @@ async function handleScan(command: ScanCommand): Promise<string> {
     rootPath: command.path,
     config: loadedConfig.config
   });
+  const parsed = await parseMarkdownFiles(files);
+  const findings = checkLocalLinks({
+    files: parsed.files,
+    links: parsed.links,
+    anchorIndex: parsed.anchorIndex
+  });
+  const sizeFindings = checkFileSizes({
+    files: parsed.files,
+    config: loadedConfig.config
+  });
+  const allFindings = [...findings, ...sizeFindings].sort((left, right) => {
+    return (
+      left.path.localeCompare(right.path) ||
+      (left.line ?? 0) - (right.line ?? 0) ||
+      (left.column ?? 0) - (right.column ?? 0) ||
+      left.ruleId.localeCompare(right.ruleId) ||
+      left.message.localeCompare(right.message)
+    );
+  });
 
   if (command.format === "json") {
     return `${JSON.stringify(
@@ -232,7 +254,8 @@ async function handleScan(command: ScanCommand): Promise<string> {
         configPath: loadedConfig.configPath ?? null,
         format: command.format,
         failOn: command.failOn,
-        files,
+        files: parsed.files,
+        findings: allFindings,
         config: loadedConfig.config,
         placeholder: true
       },
@@ -241,7 +264,7 @@ async function handleScan(command: ScanCommand): Promise<string> {
     )}\n`;
   }
 
-  return `scan placeholder: path=${command.path}, files=${files.length}, format=${command.format}, fail-on=${command.failOn}, config=${loadedConfig.configPath ?? "defaults"}\n`;
+  return `scan placeholder: path=${command.path}, files=${parsed.files.length}, findings=${allFindings.length}, format=${command.format}, fail-on=${command.failOn}, config=${loadedConfig.configPath ?? "defaults"}\n`;
 }
 
 async function handleGraph(command: GraphCommand): Promise<string> {

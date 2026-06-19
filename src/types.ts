@@ -22,6 +22,34 @@ export type MarkdownFile = {
   text?: string;
 };
 
+export type MarkdownLinkKind =
+  | "local-file"
+  | "same-file-anchor"
+  | "external"
+  | "mailto"
+  | "other";
+
+export type MarkdownLink = {
+  sourcePath: string;
+  rawTarget: string;
+  kind: MarkdownLinkKind;
+  targetPath?: string;
+  anchor?: string;
+  line?: number;
+  column?: number;
+};
+
+export type AnchorIndex = Record<string, string[]>;
+
+export type Finding = {
+  ruleId: string;
+  severity: FindingSeverity;
+  path: string;
+  line?: number;
+  column?: number;
+  message: string;
+};
+
 export type AuditConfig = {
   include: string[];
   exclude: string[];
