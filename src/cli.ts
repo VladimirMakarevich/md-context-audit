@@ -7,9 +7,13 @@ import { fileURLToPath } from "node:url";
 import { ConfigError, loadConfig } from "./config/load.js";
 import { discoverMarkdownFiles, DiscoveryError } from "./discovery/discover.js";
 import { buildDependencyGraph } from "./graph/build.js";
+import { buildEntrypointBudgets } from "./llm/budget.js";
+import { analyzeLlmImports } from "./llm/imports.js";
 import { parseMarkdownFiles } from "./markdown/parse.js";
+import { createAuditResult, renderAuditResultJson, renderAuditResultText } from "./reporting/render.js";
 import { checkLocalLinks } from "./rules/local-links.js";
 import { checkFileSizes } from "./rules/size.js";
+import type { AuditResult } from "./types.js";
 
 export const EXIT_CODE_SUCCESS = 0;
 export const EXIT_CODE_RUNTIME_ERROR = 1;
@@ -38,6 +42,11 @@ export type ParsedCommand =
   | { kind: "version" }
   | ScanCommand
   | GraphCommand;
+
+export type CommandExecutionResult = {
+  output: string;
+  exitCode: number;
+};
 
 export class CliUsageError extends Error {
   readonly exitCode = EXIT_CODE_USAGE_ERROR;
@@ -218,7 +227,22 @@ async function readPackageVersion(): Promise<string> {
   return packageJson.version ?? "0.0.0";
 }
 
-async function handleScan(command: ScanCommand): Promise<string> {
+export function resolveScanExitCode(params: {
+  failOn: FailOn;
+  result: AuditResult;
+}): number {
+  if (params.failOn === "off") {
+    return EXIT_CODE_SUCCESS;
+  }
+
+  if (params.failOn === "warning") {
+    return params.result.findings.length > 0 ? EXIT_CODE_RUNTIME_ERROR : EXIT_CODE_SUCCESS;
+  }
+
+  return params.result.summary.findings.error > 0 ? EXIT_CODE_RUNTIME_ERROR : EXIT_CODE_SUCCESS;
+}
+
+async function handleScan(command: ScanCommand): Promise<CommandExecutionResult> {
   const loadedConfig = await loadConfig({
     rootPath: command.path,
     explicitConfigPath: command.config
@@ -237,43 +261,41 @@ async function handleScan(command: ScanCommand): Promise<string> {
     files: parsed.files,
     config: loadedConfig.config
   });
+  const llmImports = analyzeLlmImports({
+    files: parsed.files,
+    config: loadedConfig.config
+  });
+  const budgets = buildEntrypointBudgets({
+    files: parsed.files,
+    config: loadedConfig.config,
+    importGraph: llmImports.importGraph
+  });
   const graph = buildDependencyGraph({
     files: parsed.files,
     links: parsed.links
   });
-  const allFindings = [...findings, ...sizeFindings].sort((left, right) => {
-    return (
-      left.path.localeCompare(right.path) ||
-      (left.line ?? 0) - (right.line ?? 0) ||
-      (left.column ?? 0) - (right.column ?? 0) ||
-      left.ruleId.localeCompare(right.ruleId) ||
-      left.message.localeCompare(right.message)
-    );
+  const result = createAuditResult({
+    rootPath: command.path,
+    files: parsed.files,
+    findings: [...findings, ...sizeFindings, ...llmImports.findings, ...budgets.findings],
+    graph,
+    budgets: budgets.budgets
   });
+  const output =
+    command.format === "json"
+      ? renderAuditResultJson(result)
+      : renderAuditResultText(result, loadedConfig.config.structure.orphanDocs);
 
-  if (command.format === "json") {
-    return `${JSON.stringify(
-      {
-        command: "scan",
-        path: command.path,
-        configPath: loadedConfig.configPath ?? null,
-        format: command.format,
-        failOn: command.failOn,
-        files: parsed.files,
-        findings: allFindings,
-        graph,
-        config: loadedConfig.config,
-        placeholder: true
-      },
-      null,
-      2
-    )}\n`;
-  }
-
-  return `scan placeholder: path=${command.path}, files=${parsed.files.length}, findings=${allFindings.length}, format=${command.format}, fail-on=${command.failOn}, config=${loadedConfig.configPath ?? "defaults"}\n`;
+  return {
+    output,
+    exitCode: resolveScanExitCode({
+      failOn: command.failOn,
+      result
+    })
+  };
 }
 
-async function handleGraph(command: GraphCommand): Promise<string> {
+async function handleGraph(command: GraphCommand): Promise<CommandExecutionResult> {
   const loadedConfig = await loadConfig({
     rootPath: command.path,
     explicitConfigPath: command.config
@@ -316,15 +338,24 @@ async function handleGraph(command: GraphCommand): Promise<string> {
     "utf8"
   );
 
-  return `graph written to ${command.out}\n`;
+  return {
+    output: `graph written to ${command.out}\n`,
+    exitCode: EXIT_CODE_SUCCESS
+  };
 }
 
-export async function executeCommand(command: ParsedCommand): Promise<string> {
+export async function executeCommand(command: ParsedCommand): Promise<CommandExecutionResult> {
   switch (command.kind) {
     case "help":
-      return `${HELP_TEXT}\n`;
+      return {
+        output: `${HELP_TEXT}\n`,
+        exitCode: EXIT_CODE_SUCCESS
+      };
     case "version":
-      return `${await readPackageVersion()}\n`;
+      return {
+        output: `${await readPackageVersion()}\n`,
+        exitCode: EXIT_CODE_SUCCESS
+      };
     case "scan":
       return handleScan(command);
     case "graph":
@@ -349,9 +380,9 @@ export async function runCli(
 
   try {
     const command = parseArgv(argv, io.cwd ?? process.cwd());
-    const output = await executeCommand(command);
-    stdout.write(output);
-    return EXIT_CODE_SUCCESS;
+    const result = await executeCommand(command);
+    stdout.write(result.output);
+    return result.exitCode;
   } catch (error) {
     if (error instanceof CliUsageError || error instanceof ConfigError || error instanceof DiscoveryError) {
       stderr.write(`${error.message}\n`);

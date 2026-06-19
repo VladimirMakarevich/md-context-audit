@@ -21,7 +21,7 @@ import type {
 const markdownProcessor = remark().use(remarkParse).use(remarkGfm);
 const IMPORT_PATTERN = /(^|[\s(])@(?<target>\/?[^\s@]+?\.md)\b/gm;
 
-function resolveImportTarget(sourcePath: string, rawTarget: string, rootPath: string): string {
+function resolveImportTarget(sourcePath: string, rawTarget: string): string {
   if (rawTarget.startsWith("/")) {
     return normalizeRelativePath(path.posix.normalize(rawTarget.slice(1)));
   }
@@ -30,7 +30,7 @@ function resolveImportTarget(sourcePath: string, rawTarget: string, rootPath: st
   return normalizeRelativePath(path.posix.normalize(path.posix.join(sourceDirectory, rawTarget)));
 }
 
-function extractImportsFromTree(tree: Root, sourcePath: string, rootPath: string): LlmImport[] {
+function extractImportsFromTree(tree: Root, sourcePath: string): LlmImport[] {
   const imports: LlmImport[] = [];
 
   visit(tree, "text", (node: Text) => {
@@ -50,7 +50,7 @@ function extractImportsFromTree(tree: Root, sourcePath: string, rootPath: string
       imports.push({
         sourcePath,
         rawTarget: `@${rawTarget}`,
-        targetPath: resolveImportTarget(sourcePath, rawTarget, rootPath),
+        targetPath: resolveImportTarget(sourcePath, rawTarget),
         line: node.position?.start.line,
         column: startColumn
       });
@@ -116,12 +116,12 @@ function buildFileMap(files: MarkdownFile[]): Map<string, MarkdownFile> {
   return new Map(files.map((file) => [file.path, file]));
 }
 
-function buildImportMap(files: MarkdownFile[], rootPath: string): Map<string, LlmImport[]> {
+function buildImportMap(files: MarkdownFile[]): Map<string, LlmImport[]> {
   const importsByFile = new Map<string, LlmImport[]>();
 
   for (const file of files) {
     const tree = markdownProcessor.parse(file.text ?? "") as Root;
-    importsByFile.set(file.path, extractImportsFromTree(tree, file.path, rootPath));
+    importsByFile.set(file.path, extractImportsFromTree(tree, file.path));
   }
 
   return importsByFile;
@@ -130,14 +130,13 @@ function buildImportMap(files: MarkdownFile[], rootPath: string): Map<string, Ll
 export function analyzeLlmImports(params: {
   files: MarkdownFile[];
   config: AuditConfig;
-  rootPath: string;
 }): {
   findings: Finding[];
   importGraph: LlmImportGraph;
 } {
   const fileMap = buildFileMap(params.files);
   const entrypoints = collectEntrypointPaths(params.files, params.config);
-  const importsByFile = buildImportMap(params.files, params.rootPath);
+  const importsByFile = buildImportMap(params.files);
   const importEdgeKeys = new Set<string>();
   const allImports = [...importsByFile.values()].flat().sort((left, right) => {
     return (

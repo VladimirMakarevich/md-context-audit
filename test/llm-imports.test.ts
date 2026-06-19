@@ -58,7 +58,7 @@ describe("analyzeLlmImports", () => {
   it("discovers configured entrypoints and resolves transitive imports", async () => {
     const repo = await createRepoFiles({
       "CLAUDE.md": "@docs/context.md\n",
-      "docs/context.md": "@shared/base.md\n",
+      "docs/context.md": "@../shared/base.md\n",
       "shared/base.md": "# Base\n",
       "README.md": "@shared/ignored.md\n"
     });
@@ -66,8 +66,7 @@ describe("analyzeLlmImports", () => {
 
     const result = analyzeLlmImports({
       files: parsed.files,
-      config: createConfig(["CLAUDE.md"]),
-      rootPath: repo.rootPath
+      config: createConfig(["CLAUDE.md"])
     });
 
     expect(result.importGraph.entrypoints).toEqual(["CLAUDE.md"]);
@@ -96,8 +95,7 @@ describe("analyzeLlmImports", () => {
 
     const result = analyzeLlmImports({
       files: parsed.files,
-      config: createConfig(),
-      rootPath: repo.rootPath
+      config: createConfig()
     });
 
     expect(result.importGraph.traversals[0]).toEqual({
@@ -117,8 +115,7 @@ describe("analyzeLlmImports", () => {
 
     const result = analyzeLlmImports({
       files: parsed.files,
-      config: createConfig(),
-      rootPath: repo.rootPath
+      config: createConfig()
     });
 
     expect(result.importGraph.imports).toEqual([
@@ -140,8 +137,7 @@ describe("analyzeLlmImports", () => {
 
     const result = analyzeLlmImports({
       files: parsed.files,
-      config: createConfig(),
-      rootPath: repo.rootPath
+      config: createConfig()
     });
 
     expect(result.findings).toEqual([
@@ -159,15 +155,14 @@ describe("analyzeLlmImports", () => {
   it("reports deterministic cycles and stops recursion", async () => {
     const repo = await createRepoFiles({
       "CLAUDE.md": "@docs/a.md\n",
-      "docs/a.md": "@docs/b.md\n",
-      "docs/b.md": "@docs/a.md\n"
+      "docs/a.md": "@b.md\n",
+      "docs/b.md": "@a.md\n"
     });
     const parsed = await parseMarkdownFiles(repo.files);
 
     const result = analyzeLlmImports({
       files: parsed.files,
-      config: createConfig(),
-      rootPath: repo.rootPath
+      config: createConfig()
     });
 
     expect(result.findings).toEqual([
@@ -210,8 +205,7 @@ describe("analyzeLlmImports", () => {
 
     const result = analyzeLlmImports({
       files: parsed.files,
-      config: createConfig(),
-      rootPath: repo.rootPath
+      config: createConfig()
     });
 
     expect(result.importGraph.imports).toEqual([
@@ -228,16 +222,15 @@ describe("analyzeLlmImports", () => {
   it("counts duplicate reachable imports once per entrypoint traversal", async () => {
     const repo = await createRepoFiles({
       "CLAUDE.md": "@docs/a.md\n@docs/b.md\n",
-      "docs/a.md": "@shared/common.md\n",
-      "docs/b.md": "@shared/common.md\n",
+      "docs/a.md": "@../shared/common.md\n",
+      "docs/b.md": "@../shared/common.md\n",
       "shared/common.md": "# Common\n"
     });
     const parsed = await parseMarkdownFiles(repo.files);
 
     const result = analyzeLlmImports({
       files: parsed.files,
-      config: createConfig(),
-      rootPath: repo.rootPath
+      config: createConfig()
     });
 
     expect(result.importGraph.traversals[0]?.importedPaths).toEqual([

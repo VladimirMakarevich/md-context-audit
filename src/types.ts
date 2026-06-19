@@ -101,6 +101,25 @@ export type LlmImportGraph = {
   traversals: EntrypointImportGraph[];
 };
 
+export type EntrypointBudgetImportedFile = {
+  path: string;
+  bytes: number;
+  estimatedTokens: number;
+};
+
+export type EntrypointBudget = {
+  entrypoint: string;
+  ownBytes: number;
+  ownEstimatedTokens: number;
+  importedFiles: EntrypointBudgetImportedFile[];
+  totalBytes: number;
+  totalEstimatedTokens: number;
+  maxTokens: number;
+  overLimit: boolean;
+  cycles: LlmImportCycle[];
+  missingImports: LlmImport[];
+};
+
 export type AuditConfig = {
   include: string[];
   exclude: string[];
@@ -126,4 +145,27 @@ export type AuditConfig = {
 export type LoadedConfig = {
   config: AuditConfig;
   configPath?: string;
+};
+
+export type AuditSummary = {
+  root: string;
+  files: number;
+  findings: {
+    error: number;
+    warning: number;
+    info: number;
+  };
+};
+
+export type AuditResultFile = {
+  path: string;
+  bytes: number;
+};
+
+export type AuditResult = {
+  summary: AuditSummary;
+  findings: Finding[];
+  files: AuditResultFile[];
+  graph: DependencyGraph;
+  budgets: EntrypointBudget[];
 };
