@@ -149,7 +149,7 @@ describe("CLI smoke", () => {
     expect(stderr.read()).toContain("Unknown command: unknown.");
   });
 
-  it("writes the placeholder graph file", async () => {
+  it("writes the graph file", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "md-context-audit-"));
     tempDirs.push(tempDir);
     const outFile = path.join(tempDir, "nested", "graph.json");
@@ -163,9 +163,29 @@ describe("CLI smoke", () => {
 
     const graphJson = await readFile(outFile, "utf8");
 
-    expect(output).toContain("graph placeholder written");
+    expect(output).toContain("graph written");
     expect(graphJson).toBe(
-      `{\n  "root": "${tempDir.replaceAll("\\", "\\\\")}",\n  "configPath": null,\n  "nodes": [\n    "README.md"\n  ],\n  "edges": []\n}\n`
+      `{\n  "root": "${tempDir.replaceAll("\\", "\\\\")}",\n  "configPath": null,\n  "graph": {\n    "nodes": [\n      {\n        "path": "README.md",\n        "bytes": 7\n      }\n    ],\n    "edges": []\n  }\n}\n`
     );
+  });
+
+  it("refuses to overwrite a directory path for graph output", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "md-context-audit-"));
+    tempDirs.push(tempDir);
+    const outDir = path.join(tempDir, "output-dir");
+    const stdout = createMemoryWriter();
+    const stderr = createMemoryWriter();
+
+    await writeFile(path.join(tempDir, "README.md"), "# Root\n", "utf8");
+    await (await import("node:fs/promises")).mkdir(outDir, { recursive: true });
+
+    const exitCode = await runCli(["graph", tempDir, "--out", outDir], {
+      stdout: stdout.stream,
+      stderr: stderr.stream
+    });
+
+    expect(exitCode).toBe(EXIT_CODE_USAGE_ERROR);
+    expect(stdout.read()).toBe("");
+    expect(stderr.read()).toContain("Cannot write graph output to directory path:");
   });
 });

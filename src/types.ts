@@ -50,6 +50,57 @@ export type Finding = {
   message: string;
 };
 
+export type DependencyGraphNode = {
+  path: string;
+  bytes: number;
+};
+
+export type DependencyGraphEdge = {
+  from: string;
+  to: string;
+  kind: "markdown-link";
+};
+
+export type DependencyGraph = {
+  nodes: DependencyGraphNode[];
+  edges: DependencyGraphEdge[];
+};
+
+export type LlmImport = {
+  sourcePath: string;
+  rawTarget: string;
+  targetPath: string;
+  line?: number;
+  column?: number;
+};
+
+export type LlmImportEdge = {
+  from: string;
+  to: string;
+  kind: "eager-import";
+};
+
+export type LlmImportCycle = {
+  paths: string[];
+  line?: number;
+  column?: number;
+  sourcePath: string;
+};
+
+export type EntrypointImportGraph = {
+  entrypointPath: string;
+  importedPaths: string[];
+  missingImports: LlmImport[];
+  cycles: LlmImportCycle[];
+};
+
+export type LlmImportGraph = {
+  entrypoints: string[];
+  imports: LlmImport[];
+  edges: LlmImportEdge[];
+  traversals: EntrypointImportGraph[];
+};
+
 export type AuditConfig = {
   include: string[];
   exclude: string[];

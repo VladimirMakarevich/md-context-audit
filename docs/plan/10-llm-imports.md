@@ -15,9 +15,11 @@ Implement parsing and traversal for LLM eager imports from configured entrypoint
 - Match entrypoints by normalized path against glob patterns.
 - Parse import syntax:
   - `@path/to/file.md`;
+  - match import tokens in normal Markdown text, not in Markdown link targets;
+  - allow imports at token boundaries within paragraphs, list items, and blockquotes;
   - path is relative to the importing file's directory unless it starts with `/`, then treat as repo-root relative;
   - only `.md` imports are included in v1.
-- Ignore import-like text inside fenced code blocks.
+- Ignore import-like text inside fenced code blocks and inline code spans.
 - Build an import tree for each entrypoint:
   - include direct and transitive imports;
   - resolve each import to a known Markdown file;
@@ -44,6 +46,7 @@ Implement parsing and traversal for LLM eager imports from configured entrypoint
 - Missing import warning.
 - Two-file import cycle warning.
 - Import-like text in a fenced code block is ignored.
+- Import-like text in inline code is ignored.
 
 ## Notes
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ConfigError, loadConfig } from "./config/load.js";
 import { discoverMarkdownFiles, DiscoveryError } from "./discovery/discover.js";
+import { buildDependencyGraph } from "./graph/build.js";
 import { parseMarkdownFiles } from "./markdown/parse.js";
 import { checkLocalLinks } from "./rules/local-links.js";
 import { checkFileSizes } from "./rules/size.js";
@@ -236,6 +237,10 @@ async function handleScan(command: ScanCommand): Promise<string> {
     files: parsed.files,
     config: loadedConfig.config
   });
+  const graph = buildDependencyGraph({
+    files: parsed.files,
+    links: parsed.links
+  });
   const allFindings = [...findings, ...sizeFindings].sort((left, right) => {
     return (
       left.path.localeCompare(right.path) ||
@@ -256,6 +261,7 @@ async function handleScan(command: ScanCommand): Promise<string> {
         failOn: command.failOn,
         files: parsed.files,
         findings: allFindings,
+        graph,
         config: loadedConfig.config,
         placeholder: true
       },
@@ -276,8 +282,24 @@ async function handleGraph(command: GraphCommand): Promise<string> {
     rootPath: command.path,
     config: loadedConfig.config
   });
+  const parsed = await parseMarkdownFiles(files);
+  const graph = buildDependencyGraph({
+    files: parsed.files,
+    links: parsed.links
+  });
   const outputPath = path.resolve(command.out);
   const outputDir = path.dirname(outputPath);
+  const outputStats = await stat(outputPath).catch((error: unknown) => {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return undefined;
+    }
+
+    throw error;
+  });
+
+  if (outputStats?.isDirectory()) {
+    throw new CliUsageError(`Cannot write graph output to directory path: ${command.out}`);
+  }
 
   await mkdir(outputDir, { recursive: true });
   await writeFile(
@@ -286,8 +308,7 @@ async function handleGraph(command: GraphCommand): Promise<string> {
       {
         root: command.path,
         configPath: loadedConfig.configPath ?? null,
-        nodes: files.map((file) => file.path),
-        edges: []
+        graph
       },
       null,
       2
@@ -295,7 +316,7 @@ async function handleGraph(command: GraphCommand): Promise<string> {
     "utf8"
   );
 
-  return `graph placeholder written to ${command.out}\n`;
+  return `graph written to ${command.out}\n`;
 }
 
 export async function executeCommand(command: ParsedCommand): Promise<string> {
