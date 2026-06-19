@@ -42,3 +42,24 @@ When the package scaffold is added, `package.json` should use:
   }
 }
 ```
+
+## Development Checks
+
+In a regular Node.js setup:
+
+```bash
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+
+In the current WSL setup, where Node.js is available through Windows instead of inside the distro:
+
+```bash
+./scripts/install-wsl.sh
+./scripts/typecheck-wsl.sh
+./scripts/test-wsl.sh
+./scripts/build-wsl.sh
+./scripts/verify-wsl.sh
+```

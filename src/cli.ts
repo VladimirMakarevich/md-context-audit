@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ConfigError, loadConfig } from "./config/load.js";
+import { discoverMarkdownFiles, DiscoveryError } from "./discovery/discover.js";
 
 export const EXIT_CODE_SUCCESS = 0;
 export const EXIT_CODE_RUNTIME_ERROR = 1;
@@ -218,6 +219,10 @@ async function handleScan(command: ScanCommand): Promise<string> {
     rootPath: command.path,
     explicitConfigPath: command.config
   });
+  const files = await discoverMarkdownFiles({
+    rootPath: command.path,
+    config: loadedConfig.config
+  });
 
   if (command.format === "json") {
     return `${JSON.stringify(
@@ -227,6 +232,7 @@ async function handleScan(command: ScanCommand): Promise<string> {
         configPath: loadedConfig.configPath ?? null,
         format: command.format,
         failOn: command.failOn,
+        files,
         config: loadedConfig.config,
         placeholder: true
       },
@@ -235,13 +241,17 @@ async function handleScan(command: ScanCommand): Promise<string> {
     )}\n`;
   }
 
-  return `scan placeholder: path=${command.path}, format=${command.format}, fail-on=${command.failOn}, config=${loadedConfig.configPath ?? "defaults"}\n`;
+  return `scan placeholder: path=${command.path}, files=${files.length}, format=${command.format}, fail-on=${command.failOn}, config=${loadedConfig.configPath ?? "defaults"}\n`;
 }
 
 async function handleGraph(command: GraphCommand): Promise<string> {
   const loadedConfig = await loadConfig({
     rootPath: command.path,
     explicitConfigPath: command.config
+  });
+  const files = await discoverMarkdownFiles({
+    rootPath: command.path,
+    config: loadedConfig.config
   });
   const outputPath = path.resolve(command.out);
   const outputDir = path.dirname(outputPath);
@@ -253,7 +263,7 @@ async function handleGraph(command: GraphCommand): Promise<string> {
       {
         root: command.path,
         configPath: loadedConfig.configPath ?? null,
-        nodes: [],
+        nodes: files.map((file) => file.path),
         edges: []
       },
       null,
@@ -299,7 +309,7 @@ export async function runCli(
     stdout.write(output);
     return EXIT_CODE_SUCCESS;
   } catch (error) {
-    if (error instanceof CliUsageError || error instanceof ConfigError) {
+    if (error instanceof CliUsageError || error instanceof ConfigError || error instanceof DiscoveryError) {
       stderr.write(`${error.message}\n`);
       return EXIT_CODE_USAGE_ERROR;
     }

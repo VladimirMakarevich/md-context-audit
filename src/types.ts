@@ -15,6 +15,13 @@ export type RequiredSectionRule = {
   slugs: string[];
 };
 
+export type MarkdownFile = {
+  path: string;
+  absolutePath: string;
+  bytes: number;
+  text?: string;
+};
+
 export type AuditConfig = {
   include: string[];
   exclude: string[];

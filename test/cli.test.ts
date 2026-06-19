@@ -153,10 +153,11 @@ describe("CLI smoke", () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "md-context-audit-"));
     tempDirs.push(tempDir);
     const outFile = path.join(tempDir, "nested", "graph.json");
+    await writeFile(path.join(tempDir, "README.md"), "# Root\n", "utf8");
 
     const output = await executeCommand({
       kind: "graph",
-      path: "/repo",
+      path: tempDir,
       out: outFile
     });
 
@@ -164,7 +165,7 @@ describe("CLI smoke", () => {
 
     expect(output).toContain("graph placeholder written");
     expect(graphJson).toBe(
-      '{\n  "root": "/repo",\n  "configPath": null,\n  "nodes": [],\n  "edges": []\n}\n'
+      `{\n  "root": "${tempDir.replaceAll("\\", "\\\\")}",\n  "configPath": null,\n  "nodes": [\n    "README.md"\n  ],\n  "edges": []\n}\n`
     );
   });
 });

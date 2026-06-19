@@ -185,12 +185,13 @@ export async function loadConfig(params: {
   explicitConfigPath?: string;
 }): Promise<LoadedConfig> {
   const rootPath = path.resolve(params.rootPath);
-  const configPath = params.explicitConfigPath
+  const explicitConfigPath = params.explicitConfigPath
     ? path.resolve(params.explicitConfigPath)
-    : await discoverConfigPath(rootPath);
+    : undefined;
+  const configPath = explicitConfigPath ?? (await discoverConfigPath(rootPath));
 
-  if (params.explicitConfigPath && !(await fileExists(configPath))) {
-    throw new ConfigError(`Config file not found: ${configPath}`);
+  if (explicitConfigPath && !(await fileExists(explicitConfigPath))) {
+    throw new ConfigError(`Config file not found: ${explicitConfigPath}`);
   }
 
   if (configPath === undefined) {
