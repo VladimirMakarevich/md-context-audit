@@ -204,6 +204,11 @@ describe("CLI smoke", () => {
     await writeFile(path.join(tempDir, "CLAUDE.md"), "@docs/context.md\n", "utf8");
     await (await import("node:fs/promises")).mkdir(path.join(tempDir, "docs"), { recursive: true });
     await writeFile(path.join(tempDir, "docs", "context.md"), "abcdefgh", "utf8");
+    await writeFile(
+      path.join(tempDir, "md-context-audit.config.json"),
+      JSON.stringify({ structure: { orphanDocs: "off" } }),
+      "utf8"
+    );
 
     const output = await executeCommand({
       kind: "scan",
@@ -306,6 +311,24 @@ describe("CLI smoke", () => {
 
     expect(exitCode).toBe(EXIT_CODE_SUCCESS);
     expect(stdout.read()).toContain('Broken local link "docs/missing.md": target file not found.');
+    expect(stderr.read()).toBe("");
+  });
+
+  it("exits 1 by default when scan finds orphan-doc errors", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "md-context-audit-cli-"));
+    tempDirs.push(tempDir);
+    const stdout = createMemoryWriter();
+    const stderr = createMemoryWriter();
+
+    await writeFile(path.join(tempDir, "docs.md"), "# Orphan\n", "utf8");
+
+    const exitCode = await runCli(["scan", tempDir], {
+      stdout: stdout.stream,
+      stderr: stderr.stream
+    });
+
+    expect(exitCode).toBe(EXIT_CODE_RUNTIME_ERROR);
+    expect(stdout.read()).toContain("structure/orphan-docs");
     expect(stderr.read()).toBe("");
   });
 });

@@ -1,8 +1,24 @@
 {
   "name": "md-context-audit",
   "version": "0.0.0",
-  "private": true,
   "description": "CLI for auditing Markdown context in repositories.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VladimirMakarevich/md-context-audit.git"
+  },
+  "homepage": "https://github.com/VladimirMakarevich/md-context-audit#readme",
+  "bugs": {
+    "url": "https://github.com/VladimirMakarevich/md-context-audit/issues"
+  },
+  "keywords": [
+    "markdown",
+    "audit",
+    "cli",
+    "documentation",
+    "llm",
+    "agents"
+  ],
   "type": "module",
   "bin": {
     "md-context-audit": "./dist/cli.js"
@@ -16,11 +32,19 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --check .",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "release:check": "npm run typecheck && npm test && npm run build && npm pack --dry-run"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "provenance": true
+  },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
     "@types/node": "^24.0.10",

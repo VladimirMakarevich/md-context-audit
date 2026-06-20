@@ -13,6 +13,7 @@ import { parseMarkdownFiles } from "./markdown/parse.js";
 import { createAuditResult, renderAuditResultJson, renderAuditResultText } from "./reporting/render.js";
 import { checkLocalLinks } from "./rules/local-links.js";
 import { checkFileSizes } from "./rules/size.js";
+import { checkStructureRules } from "./rules/structure.js";
 import type { AuditResult } from "./types.js";
 
 export const EXIT_CODE_SUCCESS = 0;
@@ -274,10 +275,20 @@ async function handleScan(command: ScanCommand): Promise<CommandExecutionResult>
     files: parsed.files,
     links: parsed.links
   });
+  const structureFindings = checkStructureRules({
+    graph,
+    config: loadedConfig.config
+  });
   const result = createAuditResult({
     rootPath: command.path,
     files: parsed.files,
-    findings: [...findings, ...sizeFindings, ...llmImports.findings, ...budgets.findings],
+    findings: [
+      ...findings,
+      ...sizeFindings,
+      ...structureFindings,
+      ...llmImports.findings,
+      ...budgets.findings
+    ],
     graph,
     budgets: budgets.budgets
   });

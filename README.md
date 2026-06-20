@@ -1,60 +1,205 @@
 # md-context-audit
 
-`md-context-audit` is a planned TypeScript CLI for auditing Markdown context in repositories. It targets Node.js 24.17.0 LTS and focuses on documentation and agent-facing context files such as `README.md`, `CLAUDE.md`, `AGENTS.md`, and `skills/**/SKILL.md`.
+`md-context-audit` is a TypeScript CLI for auditing Markdown context in repositories. It targets Node.js `24.17.0` LTS and focuses on deterministic local checks for docs and agent-facing context files such as `README.md`, `CLAUDE.md`, `AGENTS.md`, and `skills/**/SKILL.md`.
 
-The v1 CLI is intended to:
+V1 covers:
 
-- scan Markdown files for size limits, broken local links, and missing anchors;
-- build a directed dependency graph from Markdown file links;
-- detect orphan docs and graph cycles, with orphan docs treated as errors by default;
-- analyze LLM eager imports such as `@path/to/file.md`;
-- estimate per-entrypoint context budgets;
-- emit human-readable and JSON reports for local use and CI.
+- Markdown discovery under a repository root;
+- local Markdown links and anchor validation;
+- Markdown dependency graph output;
+- orphan doc and dependency cycle detection;
+- `@path/to/file.md` eager imports for LLM entrypoints;
+- per-entrypoint context budget estimates;
+- human-readable text output and machine-readable JSON output;
+- CI-friendly `--fail-on error|warning|off`.
 
-Planned commands:
-
-```bash
-md-context-audit scan [path] --format text|json --fail-on error|warning|off
-md-context-audit graph [path] --out graph.json
-```
-
-See [PLAN.md](PLAN.md) for the product idea and [docs/plan/00-meta-plan.md](docs/plan/00-meta-plan.md) for the implementation plan.
-
-After the package is published to npm, the intended install paths are:
-
-```bash
-npm install --global md-context-audit
-npx md-context-audit scan .
-```
-
-The publishing setup is tracked separately in [docs/plan/16-npm-publishing.md](docs/plan/16-npm-publishing.md).
+External HTTP link checks are not included in v1.
 
 ## Runtime
 
-Use Node.js 24.17.0 LTS for local development and CI. The repository includes `.nvmrc` and `.node-version` with that exact version.
+- Node.js `24.17.0` LTS
+- `package.json` engines: `>=24.17.0 <25`
 
-When the package scaffold is added, `package.json` should use:
+## Install
 
-```json
-{
-  "engines": {
-    "node": ">=24.17.0 <25"
+The package is not published yet. For now, run it from a local checkout:
+
+```bash
+npm install
+npm run build
+node dist/cli.js --help
+```
+
+After npm publishing is set up, the publishing workflow will be documented in [docs/plan/16-npm-publishing.md](docs/plan/16-npm-publishing.md).
+
+## Quick Start
+
+Run a text scan for the current repository:
+
+```bash
+npm install
+npm run build
+node dist/cli.js scan .
+```
+
+Run JSON output instead:
+
+```bash
+node dist/cli.js scan . --format json
+```
+
+Write the Markdown dependency graph to a file:
+
+```bash
+node dist/cli.js graph . --out graph.json
+```
+
+## CLI
+
+```bash
+md-context-audit scan [path] [--config <file>] [--format text|json] [--fail-on error|warning|off]
+md-context-audit graph [path] [--config <file>] --out graph.json
+```
+
+`scan`:
+
+- `path` defaults to the current working directory
+- `--config <file>` loads `md-context-audit.config.json`, `.cjs`, or `.mjs`
+- `--format text|json` defaults to `text`
+- `--fail-on error|warning|off` defaults to `error`
+
+`graph`:
+
+- writes deterministic graph JSON to `--out`
+- does not use `--fail-on`
+
+## Config
+
+Supported config files:
+
+- `md-context-audit.config.json`
+- `md-context-audit.config.cjs`
+- `md-context-audit.config.mjs`
+
+Example `md-context-audit.config.mjs`:
+
+```js
+export default {
+  include: ["**/*.md"],
+  exclude: ["node_modules/**", "dist/**", ".git/**"],
+  size: {
+    maxBytesDefault: 64 * 1024,
+    overrides: [
+      { pattern: "CLAUDE.md", maxBytes: 32 * 1024 },
+      { pattern: "skills/**/SKILL.md", maxBytes: 24 * 1024 }
+    ]
+  },
+  llm: {
+    entrypoints: ["CLAUDE.md", "AGENTS.md", "skills/**/SKILL.md"],
+    maxTokensPerEntrypoint: 5000
+  },
+  links: {
+    checkExternal: false,
+    ignorePatterns: []
+  },
+  structure: {
+    orphanDocs: "error",
+    orphanExemptions: ["README.md", "index.md", "CLAUDE.md", "AGENTS.md", "skills/**/SKILL.md"]
   }
-}
+};
+```
+
+Notes:
+
+- `structure.orphanDocs` supports `"error" | "warning" | "off"`.
+- orphan docs are `error` by default.
+- TypeScript config files are not supported in v1.
+- `.cjs` and `.mjs` configs execute code. Treat executable configs as trusted input only.
+
+## Rules
+
+V1 emits these rule ids:
+
+- `links/broken-links`: broken local Markdown files or anchors.
+- `size/max-file-size`: file byte limit exceeded.
+- `structure/orphan-docs`: a Markdown file has no incoming Markdown links and is not exempt.
+- `graph/dependencies`: dependency cycle in the Markdown link graph.
+- `llm/eager-imports`: missing eager import or eager import cycle.
+- `llm/context-budget`: estimated entrypoint context exceeds `llm.maxTokensPerEntrypoint`.
+
+Severity defaults in v1:
+
+- `structure/orphan-docs`: `error` by default, configurable to `warning` or `off`
+- everything else above: `warning`
+
+Important behavior:
+
+- orphan detection currently uses Markdown link edges, not LLM eager import edges
+- eager imports support `@relative/path.md` and `@/root-relative/path.md`
+- token estimation is heuristic and intentionally approximate
+
+## Output
+
+Text output is intended for humans and groups findings by severity and rule id.
+
+Example:
+
+```text
+Markdown Context Audit
+Root: /repo
+Files: 3
+Findings: 1 error, 2 warning, 0 info
+Graph: 3 nodes, 2 edges, 1 orphan docs (error), 0 cycles
+Budgets: 1 entrypoints, 0 over limit
+
+Errors (1)
+structure/orphan-docs
+- docs/standalone.md docs/standalone.md has no incoming Markdown links. Link it from an index document, remove it, or keep it as standalone when future suppression support exists.
+```
+
+JSON output includes:
+
+- `summary`
+- `findings`
+- `files`
+- `graph`
+- `budgets`
+
+Generate JSON:
+
+```bash
+node dist/cli.js scan . --format json > report.json
+```
+
+## CI
+
+Fail CI on warnings and errors:
+
+```bash
+node dist/cli.js scan . --format text --fail-on warning
+```
+
+Fail only on error-level findings:
+
+```bash
+node dist/cli.js scan . --format text --fail-on error
+```
+
+Always produce a report but never fail the job:
+
+```bash
+node dist/cli.js scan . --format json --fail-on off
 ```
 
 ## Development Checks
 
-In a regular Node.js setup:
-
 ```bash
-npm install
 npm run typecheck
 npm test
 npm run build
 ```
 
-In the current WSL setup, where Node.js is available through Windows instead of inside the distro:
+WSL helper scripts are also available in this repository:
 
 ```bash
 ./scripts/install-wsl.sh
@@ -63,3 +208,40 @@ In the current WSL setup, where Node.js is available through Windows instead of 
 ./scripts/build-wsl.sh
 ./scripts/verify-wsl.sh
 ```
+
+## Release Checklist
+
+Before a release:
+
+```bash
+node --version
+npm run typecheck
+npm test
+npm run build
+node dist/cli.js scan .
+npm pack --dry-run
+```
+
+Checklist:
+
+- confirm `node --version` reports `v24.17.0`
+- confirm `scan` works on this repository
+- inspect `npm pack --dry-run` contents before publishing
+- follow npm publishing workflow setup in [docs/plan/16-npm-publishing.md](docs/plan/16-npm-publishing.md)
+
+## Limitations
+
+V1 does not include:
+
+- external HTTP link checks
+- external link caching
+- runtime loading of `.ts` config files
+- watch mode
+- visualization UI
+- full `requiredSections` enforcement
+
+## Planning Docs
+
+- Product idea: [PLAN.md](PLAN.md)
+- Meta plan: [docs/plan/00-meta-plan.md](docs/plan/00-meta-plan.md)
+- Task breakdown: [docs/plan](docs/plan)
