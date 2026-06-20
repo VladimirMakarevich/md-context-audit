@@ -32,6 +32,8 @@ node dist/cli.js --help
 
 After npm publishing is set up, the publishing workflow will be documented in [docs/plan/16-npm-publishing.md](docs/plan/16-npm-publishing.md).
 
+Running `npm install` in a fresh checkout also creates `md-context-audit.config.json` from the bundled example if it is missing, and it leaves an existing config file untouched.
+
 ## Quick Start
 
 Run a text scan for the current repository:
@@ -198,6 +200,13 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## Project Docs
+
+- Plan review: `docs/plan-review.md`
+- [Task 02: CLI Shell](docs/plan/02-cli-shell.md)
+- [Task 12: Reporting](docs/plan/12-reporting.md)
+- [Task 15: README And Release Checklist](docs/plan/15-readme-release.md)
 
 WSL helper scripts are also available in this repository:
 

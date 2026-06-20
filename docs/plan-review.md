@@ -15,9 +15,9 @@
 
 ### C1. Дефолт `structure.orphanDocs: "error"` делает инструмент «падающим» почти на любом репозитории, включая собственный
 
-**Где:** [PLAN.md:139-150](../PLAN.md#L139-L150), [plan/03-config-loading.md:24](plan/03-config-loading.md#L24), [plan/09-structure-rules.md:13-21](plan/09-structure-rules.md#L13-L21), [plan/13-fail-on.md:46](plan/13-fail-on.md#L46).
+**Где:** [PLAN.md](../PLAN.md), [plan/03-config-loading.md](plan/03-config-loading.md), [plan/09-structure-rules.md](plan/09-structure-rules.md), [plan/13-fail-on.md](plan/13-fail-on.md).
 
-Граф строится **только** из markdown→markdown ссылок ([plan/08-graph-model.md:16-23](plan/08-graph-model.md#L16-L23)). «Сирота» = файл без входящих рёбер. При дефолте `orphanDocs: "error"` и дефолте `--fail-on error` любой не-exempt `.md` без входящей ссылки роняет scan в ненулевой код.
+Граф строится **только** из markdown→markdown ссылок ([plan/08-graph-model.md](plan/08-graph-model.md)). «Сирота» = файл без входящих рёбер. При дефолте `orphanDocs: "error"` и дефолте `--fail-on error` любой не-exempt `.md` без входящей ссылки роняет scan в ненулевой код.
 
 **Доказательство на этом же репозитории.** Ссылками из README связаны только `PLAN.md`, `00-meta-plan.md`, `16-npm-publishing.md`. Exempt: README/CLAUDE/AGENTS. Остальные 14+ файлов задач (`01`…`09`, `11`…`15`) **не** имеют входящих markdown-ссылок (в таблице мета-плана они перечислены текстом, а не ссылками) → `md-context-audit scan .` на собственном репозитории завершится с ошибкой и пометит ~15 файлов как orphan **error**.
 
@@ -30,7 +30,7 @@
 
 ### C2. Загрузка `.cjs`/`.mjs` конфигов через динамический `import()` сломается на Windows без `pathToFileURL`
 
-**Где:** [plan/03-config-loading.md:26-33](plan/03-config-loading.md#L26-L33). Платформа разработки — Windows ([env]).
+**Где:** [plan/03-config-loading.md](plan/03-config-loading.md). Платформа разработки — Windows ([env]).
 
 В ESM-пакете (`"type": "module"`) загрузка `.cjs`/`.mjs` идёт через `await import(absPath)`. На Windows `import("C:\\...\\md-context-audit.config.mjs")` бросает `ERR_UNSUPPORTED_ESM_URL_SCHEME` — нужен `import(pathToFileURL(absPath).href)`. План этот механизм не описывает вообще, а именно на Windows он обязателен. Это не «edge case», это гарантированная поломка фичи на основной платформе разработчика.
 
@@ -42,7 +42,7 @@
 
 ### C3. Ручная генерация GitHub-slug приведёт к массовым ложным «broken anchor»
 
-**Где:** [plan/05-markdown-parsing.md:28-34](plan/05-markdown-parsing.md#L28-L34) («remove punctuation that GitHub ignores»).
+**Где:** [plan/05-markdown-parsing.md](plan/05-markdown-parsing.md) («remove punctuation that GitHub ignores»).
 
 Алгоритм GitHub-слагов гораздо тоньше, чем «lowercase + пробел→`-` + убрать пунктуацию»: обработка эмодзи, HTML-сущностей, последовательностей дефисов, ведущих цифр, подчёркиваний, юникода и т. д. Любое расхождение с GitHub даёт ложные срабатывания в **флагманском** правиле `links/broken-links` (проверка якорей) — то есть инструмент будет «обвинять» корректные ссылки.
 
@@ -54,18 +54,18 @@
 
 ### H1. Синтаксис `@import` недоспецифицирован и текстовый скан даёт ложные срабатывания
 
-**Где:** [plan/10-llm-imports.md:16-24](plan/10-llm-imports.md#L16-L24), [PLAN.md:107-108](../PLAN.md#L107-L108).
+**Где:** [plan/10-llm-imports.md](plan/10-llm-imports.md), [PLAN.md](../PLAN.md).
 
 Проблемы:
-1. **Точное правило не задано.** Должна ли `@` стоять в начале строки / на границе токена? Реальный синтаксис Claude Code (см. `@AGENTS.md` в [CLAUDE.md:3](../CLAUDE.md#L3)) — в начале строки, относительно файла. План вводит правило «`/`-префикс = от корня репозитория», которое нужно сверить с реальной семантикой Claude Code, иначе для основного юзкейса инструмент даст неверный результат.
-2. **Ложные срабатывания.** План игнорирует только fenced-code-блоки, но не **inline-code**. В этом репозитории `@path/to/file.md` в [README.md:10](../README.md#L10) стоит внутри inline-кода — наивный регэксп `@...\.md` посчитает его импортом и затем выдаст warning «missing import», потому что файла нет. Нужно исключать и inline-код, и, по-хорошему, парсить импорты на основе AST/позиций парсера, а не сырого текста.
+1. **Точное правило не задано.** Должна ли `@` стоять в начале строки / на границе токена? Реальный синтаксис Claude Code (см. `@AGENTS.md` в [CLAUDE.md](../CLAUDE.md)) — в начале строки, относительно файла. План вводит правило «`/`-префикс = от корня репозитория», которое нужно сверить с реальной семантикой Claude Code, иначе для основного юзкейса инструмент даст неверный результат.
+2. **Ложные срабатывания.** План игнорирует только fenced-code-блоки, но не **inline-code**. В этом репозитории `@path/to/file.md` в [README.md](../README.md) стоит внутри inline-кода — наивный регэксп `@...\.md` посчитает его импортом и затем выдаст warning «missing import», потому что файла нет. Нужно исключать и inline-код, и, по-хорошему, парсить импорты на основе AST/позиций парсера, а не сырого текста.
 3. Разрешение `@foo.md` vs `@./foo.md` vs `@/foo.md` — описать все формы и крайние случаи.
 
 **Решение до старта:** зафиксировать точный регэксп + якорение, список исключаемых контекстов (fenced + inline code), сверить семантику `/`-префикса с реальным Claude Code и описать в задаче 10.
 
 ### H2. Эвристика токенов `length / 4` неверна в 2–4 раза для кириллицы/неевропейских языков
 
-**Где:** [plan/07-size-rule.md:19-22](plan/07-size-rule.md#L19-L22), [plan/11-context-budget.md](plan/11-context-budget.md).
+**Где:** [plan/07-size-rule.md](plan/07-size-rule.md), [plan/11-context-budget.md](plan/11-context-budget.md).
 
 `Math.ceil(text.length / 4)` калибровано под английский. Для кириллицы/CJK реальное соотношение ближе к ~1–2 символа на токен (а для CJK бывает >1 токена на символ). Пользователь и его контент — русскоязычные; план специально требует сохранять кириллицу в слагах. Значит **ключевая метрика инструмента** (`maxTokensPerEntrypoint`, `llm/context-budget`) будет ошибаться в разы именно на целевом контенте. Плюс `text.length` в JS — это UTF-16 code units (эмодзи/часть CJK считаются за 2).
 
@@ -75,9 +75,9 @@
 
 ### H3. JSON-отчёт нарушает заявленный детерминизм (absolutePath / root / text)
 
-**Где:** [plan/00-meta-plan.md:128-146](plan/00-meta-plan.md#L128-L146), тип `MarkdownFile` в [plan/04-file-discovery.md:13-17](plan/04-file-discovery.md#L13-L17).
+**Где:** [plan/00-meta-plan.md](plan/00-meta-plan.md), тип `MarkdownFile` в [plan/04-file-discovery.md](plan/04-file-discovery.md).
 
-Контракт отчёта включает `files: MarkdownFile[]` и `summary.root`. Но `MarkdownFile` содержит `absolutePath` (машинозависимый — ломает детерминизм/снапшоты) и опциональный `text` (полный текст всех файлов раздует JSON до огромных размеров). `summary.root` — тоже абсолютный путь. Это прямо противоречит цели «stable and deterministic» и подтверждается тем, что в [plan/14-fixtures-tests.md:29](plan/14-fixtures-tests.md#L29) приходится «normalize absolute paths in output for snapshots».
+Контракт отчёта включает `files: MarkdownFile[]` и `summary.root`. Но `MarkdownFile` содержит `absolutePath` (машинозависимый — ломает детерминизм/снапшоты) и опциональный `text` (полный текст всех файлов раздует JSON до огромных размеров). `summary.root` — тоже абсолютный путь. Это прямо противоречит цели «stable and deterministic» и подтверждается тем, что в [plan/14-fixtures-tests.md](plan/14-fixtures-tests.md) приходится нормализовать абсолютные пути в snapshot-тестах.
 
 **Решение до старта:** развести **внутренний** тип (`absolutePath`, `text`) и **сериализуемый** DTO отчёта (только POSIX-relative `path`, `bytes`; без `text`; `root` — либо относительный/нормализованный, либо помечен как ненормализуемый и исключён из снапшотов централизованно, а не в тестах).
 
@@ -87,7 +87,7 @@
 
 Существуют два независимых графа: link-граф (задача 08) и import-дерево (задача 10). Orphan-детект использует только link-граф. Документ, который **импортируется** из `CLAUDE.md` через `@path`, но не линкуется ни из одного `.md`, будет помечен как orphan (а при дефолте — `error`). Это очевидный ложный позитив: импортируемый файл явно «используется».
 
-**Решение до старта:** решить, считаются ли `@import`-рёбра входящими ссылками для orphan-детекта (рекомендуется — да). Связано с [C1](#c1-дефолт-structureorphandocs-error-делает-инструмент-падающим-почти-на-любом-репозитории-включая-собственный).
+**Решение до старта:** решить, считаются ли `@import`-рёбра входящими ссылками для orphan-детекта (рекомендуется — да). Связано с C1.
 
 ### H5. Единая семантика glob не зафиксирована (root vs basename vs `**`), используется в 5 местах
 
@@ -99,7 +99,7 @@
 
 ### H6. Область `links/broken-links` неоднозначна: только `.md` или все локальные файлы?
 
-**Где:** [PLAN.md:70](../PLAN.md#L70) («the target file exists») vs примеры только-`.md` в [plan/06-local-link-rule.md:14-18](plan/06-local-link-rule.md#L14-L18); картинки в [plan/05-markdown-parsing.md:26](plan/05-markdown-parsing.md#L26) («image links … only when they point to `.md`» — что бессмысленно, т.к. картинки не указывают на `.md`).
+**Где:** [PLAN.md](../PLAN.md) («the target file exists») vs примеры только-`.md` в [plan/06-local-link-rule.md](plan/06-local-link-rule.md); картинки в [plan/05-markdown-parsing.md](plan/05-markdown-parsing.md) («image links … only when they point to `.md`» — что бессмысленно, т.к. картинки не указывают на `.md`).
 
 Не определено: проверяем ли мы существование локальных **не**-markdown ссылок (`./script.js`, `../img.png`)? Если нет — битые ссылки на ассеты/исходники не ловятся (сужение ценности). Также не определено поведение якоря, когда целевой `.md` существует на диске, но **исключён** из discovery (нет `AnchorIndex`) или лежит вне scan-root.
 
@@ -107,7 +107,7 @@
 
 ### H7. Self-link ломает и orphan-детект, и детект циклов
 
-**Где:** [plan/08-graph-model.md](plan/08-graph-model.md) (рёбра, self-link не исключён), [plan/09-structure-rules.md:24-25](plan/09-structure-rules.md#L24-L25) (SCC «size greater than 1»).
+**Где:** [plan/08-graph-model.md](plan/08-graph-model.md) (рёбра, self-link не исключён), [plan/09-structure-rules.md](plan/09-structure-rules.md) (SCC «size greater than 1»).
 
 Файл, ссылающийся сам на себя (`[x](./self.md)`), получает входящее ребро `A→A` → **никогда** не будет помечен как orphan (ложно «спасён»). При этом SCC размера 1 с петлёй не попадёт под «size > 1» → self-cycle не репортится. Также детерминизм рендера цикла не специфицирован: вывод Тарьяна зависит от порядка обхода; нужна канонизация (сортировка узлов/смежности + ротация цикла от лексикографически минимального узла).
 
@@ -115,7 +115,7 @@
 
 ### H8. `requiredSections` есть в задокументированном примере конфига, но исключён из v1 и будет отклонён валидатором
 
-**Где:** пример конфига в [PLAN.md:181-194](../PLAN.md#L181-L194) содержит `structure.requiredSections`; v1 его исключает ([plan/00-meta-plan.md:37](plan/00-meta-plan.md#L37)); валидация считает неизвестные ключи ошибкой ([plan/03-config-loading.md:37](plan/03-config-loading.md#L37)).
+**Где:** пример конфига в [PLAN.md](../PLAN.md) содержит `structure.requiredSections`; v1 его исключает ([plan/00-meta-plan.md](plan/00-meta-plan.md)); валидация считает неизвестные ключи ошибкой ([plan/03-config-loading.md](plan/03-config-loading.md)).
 
 Если пользователь скопирует пример из PLAN.md, **собственный валидатор инструмента его отвергнет** (config error, exit 2). Внутреннее противоречие плана.
 
@@ -123,15 +123,15 @@
 
 ### H9. Дизайн severity: битые ссылки = warning, а orphan = error → дефолтный CI игнорирует битые ссылки, но падает на сиротах
 
-**Где:** severity по правилам: `links/broken-links`=warning ([06](plan/06-local-link-rule.md#L36)), `size`=warning ([07](plan/07-size-rule.md)), cycles=warning ([09](plan/09-structure-rules.md)), `llm/*`=warning ([10](plan/10-llm-imports.md), [11](plan/11-context-budget.md)); только orphan=error ([09](plan/09-structure-rules.md)).
+**Где:** severity по правилам: `links/broken-links`=warning ([06](plan/06-local-link-rule.md)), `size`=warning ([07](plan/07-size-rule.md)), cycles=warning ([09](plan/09-structure-rules.md)), `llm/*`=warning ([10](plan/10-llm-imports.md), [11](plan/11-context-budget.md)); только orphan=error ([09](plan/09-structure-rules.md)).
 
-При дефолте `--fail-on error` **единственное**, что роняет CI, — это orphan-доки. Битая ссылка (объективно более серьёзный дефект) CI не уронит. Приоритеты выглядят перевёрнутыми. Дополнительно: коллизия кодов выхода — «scan нашёл error-findings» и «инструмент упал с runtime-ошибкой» оба дают exit `1` ([plan/13-fail-on.md:13-20](plan/13-fail-on.md#L13-L20)), CI не отличит «нашлись проблемы» от «инструмент сломался».
+При дефолте `--fail-on error` **единственное**, что роняет CI, — это orphan-доки. Битая ссылка (объективно более серьёзный дефект) CI не уронит. Приоритеты выглядят перевёрнутыми. Дополнительно: коллизия кодов выхода — «scan нашёл error-findings» и «инструмент упал с runtime-ошибкой» оба дают exit `1` ([plan/13-fail-on.md](plan/13-fail-on.md)), CI не отличит «нашлись проблемы» от «инструмент сломался».
 
 **Решение до старта:** пересмотреть матрицу severity (стоит ли broken-link быть error? стоит ли orphan быть warning — см. [C1](#c1-дефолт-structureorphandocs-error-делает-инструмент-падающим-почти-на-любом-репозитории-включая-собственный)); рассмотреть отдельный код выхода для внутренних ошибок (напр. `1`=findings, иной код=crash).
 
 ### H10. `engines.node: ">=24.17.0 <25"` блокирует все будущие мажоры Node для публикуемого CLI
 
-**Где:** [AGENTS.md](../AGENTS.md), [PLAN.md:202](../PLAN.md#L202), [plan/01](plan/01-project-scaffold.md), [plan/16](plan/16-npm-publishing.md).
+**Где:** [AGENTS.md](../AGENTS.md), [PLAN.md](../PLAN.md), [plan/01](plan/01-project-scaffold.md), [plan/16](plan/16-npm-publishing.md).
 
 Жёсткий верхний предел `<25` означает, что при выходе Node 25/26 LTS инструмент **откажется запускаться**, даже если фактически ничего не ломается. Для публичного CLI это создаёт трение и режет аудиторию. CLI на стабильных API обычно ставит `>=X`.
 
@@ -139,7 +139,7 @@
 
 ### H11. Подход/библиотека валидации и слияния конфига не выбраны
 
-**Где:** [plan/03-config-loading.md:34-40](plan/03-config-loading.md#L34-L40).
+**Где:** [plan/03-config-loading.md](plan/03-config-loading.md).
 
 Требуется: deep-merge объектов, **замена** массивов, отклонение неизвестных ключей, enum-валидация (`orphanDocs`), хорошие сообщения об ошибках для CLI. Это нетривиально и опасно при ручной реализации (особенно «массивы заменяют, объекты сливаются»).
 
@@ -167,7 +167,7 @@
 - **Приёмка `node --version` == `v24.17.0`** хрупкая (контрибьютор на 24.18.0 «провалит»); проверять диапазон `engines`. *(Low)*
 - **Дрейф документации:** в [PLAN.md](../PLAN.md) сироты числятся под двумя rule id (`graph/dependencies` и `structure/orphan-docs`), в задачах разведены; согласовать. *(Low)*
 - **`info` severity** объявлена в суммари/сортировке, но ни одно v1-правило её не выдаёт — мёртвая категория. *(Low)*
-- **Выбор библиотек не закреплён:** markdown-парсер (рекомендуется `remark` + `remark-gfm` за позиции и корректную обработку code-fence; см. [plan/05:59](plan/05-markdown-parsing.md#L59)), граф (свой минимальный vs `@dagrejs/graphlib`), токенайзер. Закрепить до старта соответствующих задач. *(Medium)*
+- **Выбор библиотек не закреплён:** markdown-парсер (рекомендуется `remark` + `remark-gfm` за позиции и корректную обработку code-fence; см. [plan/05-markdown-parsing.md](plan/05-markdown-parsing.md)), граф (свой минимальный vs `@dagrejs/graphlib`), токенайзер. Закрепить до старта соответствующих задач. *(Medium)*
 
 ---
 

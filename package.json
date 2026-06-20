@@ -32,11 +32,14 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --check .",
+    "postinstall": "node ./scripts/install-default-config.mjs",
     "prepack": "npm run build",
     "release:check": "npm run typecheck && npm test && npm run build && npm pack --dry-run"
   },
   "files": [
     "dist",
+    "md-context-audit.config.example.json",
+    "scripts/install-default-config.mjs",
     "README.md",
     "LICENSE"
   ],
