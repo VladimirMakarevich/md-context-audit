@@ -2,15 +2,15 @@
   "include": ["**/*.md"],
   "exclude": ["node_modules/**", "dist/**", ".git/**", "test/fixtures/**"],
   "size": {
-    "maxBytesDefault": 65536,
+    "maxBytesDefault": 5000,
     "overrides": [
       {
         "pattern": "CLAUDE.md",
-        "maxBytes": 32768
+        "maxBytes": 2000
       },
       {
         "pattern": "skills/**/SKILL.md",
-        "maxBytes": 24576
+        "maxBytes": 5000
       }
     ]
   },

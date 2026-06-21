@@ -18,11 +18,19 @@ These instructions apply to the entire repository.
 
 ## Sources Of Truth
 
-- Product idea: `PLAN.md`.
-- Implementation breakdown: `docs/plan/00-meta-plan.md`.
-- Granular task files: `docs/plan/01-project-scaffold.md` through `docs/plan/16-npm-publishing.md`.
+The production (**v2**) effort is the current focus; its planning lives under `docs/v2/`:
 
-When implementing, follow the numbered task order unless the user explicitly asks for a different slice.
+- **Roadmap:** `docs/v2/Index.md` — gap analysis, target architecture, decisions (D1–D7), phases (P0–P9), milestones (M1–M4).
+- **Refined requirements:** `docs/v2/requirements/` (index: `docs/v2/requirements/index.md`) — the locked, point-by-point v2 requirements. Authoritative wherever the plan is otherwise ambiguous.
+- **Architectural decisions:** `docs/v2/decisions/` — load-bearing decisions referenced throughout (e.g. core-hosts-the-pipeline, vendor-neutral skill distribution).
+- **Phase task plans:** `docs/v2/P0-foundations/` … `docs/v2/P9-release/` — one folder per phase, each with a meta `index.md` plus numbered task files. Every task declares its `Previous` / `Next` / `Depends on` / `Blocks` chain.
+
+Historical (**v1** MVP / PoC), retained for context — superseded by the v2 roadmap for current work:
+
+- Original product idea: `PLAN.md`.
+- v1 implementation breakdown: `docs/plan/00-meta-plan.md` and `docs/plan/01-project-scaffold.md` through `docs/plan/16-npm-publishing.md`.
+
+When implementing v2, follow the phase order (P0 → P9) and each task's sequence links unless the user explicitly asks for a different slice. The "V1 Boundaries" section below describes the original MVP scope and is superseded by the v2 roadmap.
 
 ## V1 Boundaries
 
